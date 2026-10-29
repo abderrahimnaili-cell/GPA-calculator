@@ -1,0 +1,282 @@
+
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPA Calculator Pro</title>
+    <style>
+        :root {
+            --bg-color: #0b101b;
+            --card-bg: #161b2b;
+            --text-color: #ffffff;
+            --accent-cyan: #00ffd5;
+            --border-color: #2d3748;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 900px;
+            text-align: center;
+            transition: filter 0.4s ease;
+        }
+
+        /* تأثير التضبيب */
+        .blur-effect {
+            filter: blur(10px) brightness(0.4);
+            pointer-events: none;
+        }
+
+        h2 { margin-bottom: 2rem; color: var(--accent-cyan); }
+
+        .row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 50px;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input {
+            background: #0d111d;
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* أزرار النيون */
+        .neon-wrapper {
+            position: relative;
+            display: inline-block;
+            padding: 3px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 10px;
+            cursor: pointer;
+        }
+
+        .neon-wrapper::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: conic-gradient(transparent, #ff0000, #48ff00, #00ffd5, #002bff, #ff00c8, transparent);
+            animation: rotateNeon 4s linear infinite;
+        }
+
+        @keyframes rotateNeon { 100% { transform: rotate(360deg); } }
+
+        .btn-neon {
+            background: #1a1f2e;
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            display: block;
+        }
+
+        /* النافذة المنبثقة */
+        #result-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: none; /* مخفي افتراضياً */
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .message-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 50px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 255, 213, 0.3);
+            transform: scale(0.7);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .message-box.show {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .final-score { font-size: 70px; color: var(--accent-cyan); font-weight: 900; }
+        
+        .close-btn {
+            background: var(--accent-cyan);
+            color: #000;
+            border: none;
+            padding: 12px 40px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+.btn-delete { 
+            background: none; 
+            border: 1px solid #ef4444; 
+            color: #ef4444; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .row { grid-template-columns: 1fr; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="main-ui">
+    <h2>GPA CALCULATOR</h2>
+    
+    <div id="subjects-list">
+        <div class="row">
+            <input type="text" placeholder="Subject" class="name">
+            <input type="number" value="1" class="coeff" title="Coefficient">
+            <input type="number" placeholder="Exam" class="grade exam" oninput="limitValue(this)">
+            <input type="number" placeholder="TD" class="grade td" oninput="limitValue(this)">
+            <input type="number" placeholder="TP" class="grade tp" oninput="limitValue(this)">
+            <button class="btn-delete" onclick="deleteRow(this)">X</button>
+        </div>
+    </div>
+
+    <div class="neon-wrapper">
+        <button class="btn-neon" onclick="addNewRow()">+ ADD SUBJECT</button>
+    </div>
+    
+    <div class="neon-wrapper" style="min-width: 200px;">
+        <button class="btn-neon" onclick="runCalculation()">CALCULATE NOW</button>
+    </div>
+</div>
+
+<div id="result-modal">
+    <div class="message-box" id="msg-content">
+        <p style="color: #ccc; margin: 0;">YOUR AVERAGE IS</p>
+        <div class="final-score" id="score-text">0.00</div>
+        <p id="appraisal" style="font-size: 20px; margin-bottom: 25px;"></p>
+        <button class="close-btn" onclick="hideModal()">CLOSE</button>
+    </div>
+</div>
+
+<script>
+    // منع تجاوز الدرجة لـ 20
+    function limitValue(input) {
+        if (input.value > 20) input.value = 20;
+        if (input.value < 0) input.value = 0;
+    }
+
+    // إضافة سطر جديد
+    function addNewRow() {
+        const list = document.getElementById('subjects-list');
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+            <input type="text" placeholder="Subject" class="name">
+            <input type="number" value="1" class="coeff">
+            <input type="number" placeholder="Exam" class="grade exam" oninput="limitValue(this)">
+            <input type="number" placeholder="TD" class="grade td" oninput="limitValue(this)">
+            <input type="number" placeholder="TP" class="grade tp" oninput="limitValue(this)">
+            <button class="btn-delete" onclick="deleteRow(this)">X</button>
+        `;
+        list.appendChild(row);
+    }
+
+   
+    function deleteRow(btn) {
+        const rows = document.querySelectorAll('.row');
+        if (rows.length > 1) {
+            btn.closest('.row').remove();
+        }
+    }
+
+ 
+    function runCalculation() {
+        const allRows = document.querySelectorAll('.row');
+        let totalPoints = 0;
+        let totalCoeffs = 0;
+
+        allRows.forEach(row => {
+            const c = parseFloat(row.querySelector('.coeff').value) || 0;
+            const ex = parseFloat(row.querySelector('.exam').value) || 0;
+            const tdVal = row.querySelector('.td').value;
+            const tpVal = row.querySelector('.tp').value;
+            
+            let avg = 0;
+
+            if (tdVal !== "" && tpVal !== "") {
+                avg = ((parseFloat(tdVal) + parseFloat(tpVal)) / 2) * 0.4 + (ex * 0.6);
+            } else if (tdVal !== "") {
+                avg = (parseFloat(tdVal) * 0.4) + (ex * 0.6);
+            } else {
+                avg = ex;
+            }
+
+            totalPoints += (avg * c);
+            totalCoeffs += c;
+        });
+
+        const result = totalCoeffs > 0 ? (totalPoints / totalCoeffs).toFixed(2) : "0.00";
+        showModal(result);
+    }
+
+
+    function showModal(value) {
+        document.getElementById('score-text').innerText = value;
+        const appraisal = document.getElementById('appraisal');
+        
+        if (value >= 16) appraisal.innerText = "Excellent! 🏆";
+        else if (value >= 14) appraisal.innerText = "Very Good! 🌟";
+        else if (value >= 12) appraisal.innerText = "Good! 👍";
+        else if (value >= 10) appraisal.innerText = "Pass! 📚";
+        else appraisal.innerText = "Try Harder! 🚩";
+
+        document.getElementById('main-ui').classList.add('blur-effect');
+        const modal = document.getElementById('result-modal');
+        modal.style.display = 'flex';
+        
+        setTimeout(() => {
+            document.getElementById('msg-content').classList.add('show');
+        }, 10);
+    }
+
+    function hideModal() {
+        document.getElementById('msg-content').classList.remove('show');
+        setTimeout(() => {
+            document.getElementById('result-modal').style.display = 'none';
+            document.getElementById('main-ui').classList.remove('blur-effect');
+        }, 400);
+    }
+</script>
+
+</body>
+</html>
